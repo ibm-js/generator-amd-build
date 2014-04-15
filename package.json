@@ -1,12 +1,8 @@
 {
 	"name": "generator-amd-build",
 	"version": "0.1.0",
-	"description": "Yeoman generator",
+	"description": "Yeoman generator to build Amd app with the grunt-amd-build Grunt plugin.",
 	"homepage": "https://github.com/ibm-js/generator-amd-build",
-	"author": {
-		"name": "Clément Mathieu",
-		"email": "clement.mathieu@outlook.com"
-	},
 	"repository": {
 		"type": "git",
 		"url": "git://github.com/ibm-js/generator-amd-build.git"
