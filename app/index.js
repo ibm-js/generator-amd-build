@@ -44,8 +44,10 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 		var done = this.async(),
 			confRe = /require(?:\.config\((\{[^()]*\})\);)/,
 			toUnix = function (path) {
-				path = path.replace(/\\/g, "/");
-				return path.charAt(path.length - 1) === "/" ? path : path + "/";
+				return path.replace(/\\/g, "/");
+			},
+			toDir = function (path) {
+				return toUnix(path).charAt(path.length - 1) === "/" ? path : path + "/";
 			};
 
 
@@ -56,7 +58,7 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 			name: "loaderConfig",
 			message: "Enter the filepath of the file containing requirejs config:",
 			default: "index.html",
-			filter: toUnix
+			filter: toDir
 		};
 
 		var retryConfigPrompt = {
@@ -103,7 +105,8 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 			type: "input",
 			name: "layerName",
 			message: "Enter the name of the layer to build:",
-			default: "app/layer"
+			default: "app/layer",
+			filter: toUnix
 		};
 
 		var getLayerName = function (ans) {
@@ -114,8 +117,9 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 		var mainsPrompt = {
 			type: "input",
 			name: "mains",
-			message: "Enter the id of your application main(s) modules(s)\n (use comma-separated list to add several):",
-			default: "app/main"
+			message: "Enter the id of your application entry-point(s)\n (use comma-separated list to add several):",
+			default: "app/main",
+			filter: toUnix
 		};
 
 		var getMains = function (ans) {
@@ -141,6 +145,18 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 		var getUglify = function (ans) {
 			this.answers.uglify = ans.uglify;
 			this.answers.sourcemap = ans.sourcemap;
+			this.prompt(cssPrompt, getCss);
+		}.bind(this);
+
+		var cssPrompt = {
+			type: "confirm",
+			name: "css",
+			message: "Do you want to optimize the css ?",
+			default: true
+		};
+
+		var getCss = function (ans) {
+			this.answers.css = ans.css;
 			this.prompt(outPrompt, getOut);
 		}.bind(this);
 
@@ -149,11 +165,24 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 			name: "out",
 			message: "Enter the path to the output directory for the build:",
 			default: "./build",
-			filter: toUnix
+			filter: toDir
 		};
 
 		var getOut = function (ans) {
 			this.answers.out = ans.out;
+			this.prompt(deployPrompt, getDeploy);
+		}.bind(this);
+
+		var deployPrompt = {
+			type: "input",
+			name: "deploy",
+			message: "Where do you want to deploy your build:",
+			default: "./deploy",
+			filter: toDir
+		};
+
+		var getDeploy = function (ans) {
+			this.answers.deploy = ans.deploy;
 			done();
 		}.bind(this);
 
@@ -182,13 +211,13 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 				"}",
 			tmpdir: "\"" + this.answers.tmp + "\"",
 			outdir: "\"" + this.answers.out + "\"",
+			deploydir: "\"" + this.answers.deploy + "\"",
 			outprop: "\"amdoutput\""
 		};
 
 		Object.keys(variables).forEach(function (key) {
 			this.gruntfile.insertVariable(key, variables[key]);
 		}.bind(this));
-
 	},
 
 	setGruntConfig: function () {
@@ -219,6 +248,13 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 			"		cwd: tmpdir," +
 			"		src: \"<%= \" + outprop + \".plugins.rel %>\"," +
 			"		dest: outdir" +
+			"	}," +
+			"	deploy: {" +
+			"		expand: true," +
+			"		cwd: outdir + \"<%= amdloader.baseUrl %>\"," +
+			"		src: \"**/*\"," +
+			"		dest: deploydir," +
+			"		dot: true" +
 			"	}" +
 			"}");
 
@@ -244,7 +280,7 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 
 			"layers.forEach(function (layer) {" +
 			"	grunt.task.run(\"amddepsscan:\" + layer.name + \":\" + name + \":\" + amdloader);" +
-			"	grunt.task.run(\"amdserialize:\" + layer.name + \":\" + name + \":\" + amdloader + \":\" + outprop);" +
+			"	grunt.task.run(\"amdserialize:\" + layer.name + \":\" + name + \":\" + outprop);" +
 			"	grunt.task.run(\"" + (this.answers.uglify ? "uglify" : "concat") + "\");" +
 			"	grunt.task.run(\"copy:plugins\");" +
 			"});" +
@@ -256,6 +292,7 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 		// Remove tmp folder if there is no sourcemap
 		!this.answers.sourcemap && tasks.push("clean:finish");
 		this.gruntfile.registerTaskOnce("build", "[\"" + tasks.join("\", \"") + "\"]");
+		this.gruntfile.registerTaskOnce("deploy", "[\"copy:deploy\"]");
 	},
 
 	installDeps: function () {
@@ -265,6 +302,9 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 			deps.push("grunt-contrib-uglify");
 		} else {
 			deps.push("grunt-contrib-concat");
+		}
+		if (this.answers.css) {
+			deps.push("clean-css");
 		}
 		this.npmInstall(deps, {
 			saveDev: true
