@@ -1,4 +1,4 @@
-# generator-amd-build [![Build Status](https://travis-ci.org/clmath/generator-amd-build.png)](https://travis-ci.org/clmath/generator-amd-build)
+# generator-amd-build [![Build Status](https://travis-ci.org/ibm-js/generator-amd-build.png)](https://travis-ci.org/clmath/generator-amd-build)
 
 
 > [Yeoman](http://yeoman.io) generator
