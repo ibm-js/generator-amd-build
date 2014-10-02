@@ -223,7 +223,7 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 	setGruntConfig: function () {
 		this.gruntfile.insertConfig("amdloader", this.answers.loaderConfig);
 		this.gruntfile.insertConfig("amdbuild", "{" +
-			"	dir: \"" + this.answers.tmp + "\"," +
+			"	dir: tmpdir," +
 			"	layers: [{" +
 			"		name: \"" + this.answers.layerName + "\"," +
 			"		include: [\"" + this.answers.includes.join("\", \"") + "\"]" +
