@@ -12,8 +12,8 @@ module.exports = function (grunt) {
 		jshint: {
 			all: filesList,
 			options: {
-				jshintrc: ".jshintrc",
-			},
+				jshintrc: ".jshintrc"
+			}
 		},
 
 		lineending: {

@@ -82,7 +82,9 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 			try {
 				var config = this.dest.read(path).match(confRe)[1];
 				this.log("Found configuration:");
+				/*jshint evil:true */
 				this.log(JSON.stringify(eval("new Object(" + config + ")"), null, 2));
+				/*jshint evil:false */
 				this.prompt(confirmConfigPrompt, function (props) {
 					if (props.confirmConfig) {
 						this.answers.loaderConfig = config;
