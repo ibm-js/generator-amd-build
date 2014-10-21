@@ -82,11 +82,11 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 			try {
 				var config = this.dest.read(path).match(confRe)[1];
 				this.log("Found configuration:");
-				this.log(config);
+				this.log(JSON.stringify(eval("new Object(" + config + ")"), null, 2));
 				this.prompt(confirmConfigPrompt, function (props) {
 					if (props.confirmConfig) {
 						this.answers.loaderConfig = config;
-						this.prompt(layerNamePrompt, getLayerName);
+						this.prompt(mainsPrompt, getMains);
 					}
 				}.bind(this));
 			} catch (e) {
@@ -94,36 +94,41 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 					if (props.retryConfig) {
 						this.prompt(configPrompt, getLoaderConfig);
 					} else {
-						this.prompt(layerNamePrompt, getLayerName);
+						this.prompt(mainsPrompt, getMains);
 					}
 				}.bind(this));
 			}
-		}.bind(this);
-
-
-		var layerNamePrompt = {
-			type: "input",
-			name: "layerName",
-			message: "Enter the name of the layer to build:",
-			default: "app/layer",
-			filter: toUnix
-		};
-
-		var getLayerName = function (ans) {
-			this.answers.layerName = ans.layerName;
-			this.prompt(mainsPrompt, getMains);
 		}.bind(this);
 
 		var mainsPrompt = {
 			type: "input",
 			name: "mains",
 			message: "Enter the id of your application entry-point(s)\n (use comma-separated list to add several):",
-			default: "app/main",
-			filter: toUnix
+			default: "js/app"
 		};
 
 		var getMains = function (ans) {
-			this.answers.includes = typeof ans.mains === "string" ? [ans.mains] : ans.mains;
+			var mains = ans.mains.replace(/\s/g, "").replace(/^,/, "").replace(/,$/, "").split(",").map(toUnix);
+			if (mains.length > 1) {
+				this.answers.includes = mains;
+				this.prompt(layerNamePrompt, getLayerName);
+			} else {
+				this.answers.layerName = mains[0];
+				this.answers.includes = [];
+				this.prompt(uglifyPrompts, getUglify);
+			}
+		}.bind(this);
+
+		var layerNamePrompt = {
+			type: "input",
+			name: "layerName",
+			message: "Enter the name of the layer to build:",
+			default: "js/layer",
+			filter: toUnix
+		};
+
+		var getLayerName = function (ans) {
+			this.answers.layerName = ans.layerName;
 			this.prompt(uglifyPrompts, getUglify);
 		}.bind(this);
 
@@ -145,18 +150,6 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 		var getUglify = function (ans) {
 			this.answers.uglify = ans.uglify;
 			this.answers.sourcemap = ans.sourcemap;
-			this.prompt(cssPrompt, getCss);
-		}.bind(this);
-
-		var cssPrompt = {
-			type: "confirm",
-			name: "css",
-			message: "Do you want to optimize the css ?",
-			default: true
-		};
-
-		var getCss = function (ans) {
-			this.answers.css = ans.css;
 			this.prompt(outPrompt, getOut);
 		}.bind(this);
 
@@ -170,19 +163,6 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 
 		var getOut = function (ans) {
 			this.answers.out = ans.out;
-			this.prompt(deployPrompt, getDeploy);
-		}.bind(this);
-
-		var deployPrompt = {
-			type: "input",
-			name: "deploy",
-			message: "Where do you want to deploy your build:",
-			default: "./deploy",
-			filter: toDir
-		};
-
-		var getDeploy = function (ans) {
-			this.answers.deploy = ans.deploy;
 			done();
 		}.bind(this);
 
@@ -211,7 +191,6 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 				"}",
 			tmpdir: "\"" + this.answers.tmp + "\"",
 			outdir: "\"" + this.answers.out + "\"",
-			deploydir: "\"" + this.answers.deploy + "\"",
 			outprop: "\"amdoutput\""
 		};
 
@@ -226,7 +205,7 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 			"	dir: tmpdir," +
 			"	layers: [{" +
 			"		name: \"" + this.answers.layerName + "\"," +
-			"		include: [\"" + this.answers.includes.join("\", \"") + "\"]" +
+			"		include: " + JSON.stringify(this.answers.includes) +
 			"	}]" +
 			"}");
 
@@ -248,13 +227,6 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 			"		cwd: tmpdir," +
 			"		src: \"<%= \" + outprop + \".plugins.rel %>\"," +
 			"		dest: outdir" +
-			"	}," +
-			"	deploy: {" +
-			"		expand: true," +
-			"		cwd: outdir + \"<%= amdloader.baseUrl %>\"," +
-			"		src: \"**/*\"," +
-			"		dest: deploydir," +
-			"		dot: true" +
 			"	}" +
 			"}");
 
@@ -292,19 +264,15 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 		// Remove tmp folder if there is no sourcemap
 		!this.answers.sourcemap && tasks.push("clean:finish");
 		this.gruntfile.registerTaskOnce("build", "[\"" + tasks.join("\", \"") + "\"]");
-		this.gruntfile.registerTaskOnce("deploy", "[\"copy:deploy\"]");
 	},
 
 	installDeps: function () {
 		var done = this.async();
-		var deps = ["grunt-amd-build", "grunt-contrib-clean", "grunt-contrib-copy"];
+		var deps = ["grunt-amd-build", "grunt-contrib-clean", "grunt-contrib-copy", "clean-css"];
 		if (this.answers.uglify) {
 			deps.push("grunt-contrib-uglify");
 		} else {
 			deps.push("grunt-contrib-concat");
-		}
-		if (this.answers.css) {
-			deps.push("clean-css");
 		}
 		this.npmInstall(deps, {
 			saveDev: true
