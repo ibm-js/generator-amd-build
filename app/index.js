@@ -254,7 +254,7 @@ var AmdBuildGenerator = yeoman.generators.Base.extend({
 
 			"layers.forEach(function (layer) {" +
 			"	grunt.task.run(\"amddepsscan:\" + layer.name + \":\" + name + \":\" + amdloader);" +
-			"	grunt.task.run(\"amdserialize:\" + layer.name + \":\" + name + \":\" + outprop);" +
+			"	grunt.task.run(\"amdserialize:\" + layer.name + \":\" + name + \":\" + amdloader + \":\" + outprop);" +
 			"	grunt.task.run(\"" + (this.answers.uglify ? "uglify" : "concat") + "\");" +
 			"	grunt.task.run(\"copy:plugins\");" +
 			"});" +
